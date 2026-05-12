@@ -139,34 +139,55 @@ function TypingIndicator() {
 }
 
 function AgentAvatar() {
+  const [hovered, setHovered] = useState(false)
   return (
     <div
-      className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mb-1 font-lato tracking-wider"
+      className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mb-1 font-lato tracking-wider cursor-default"
       style={{
         background: 'linear-gradient(135deg, #c9a84c, #8a6f30)',
         color: '#1a1a2e',
-        boxShadow: '0 2px 8px rgba(201,168,76,0.35)',
+        boxShadow: hovered
+          ? '0 4px 16px rgba(201,168,76,0.65), 0 0 0 2px rgba(201,168,76,0.25)'
+          : '0 2px 8px rgba(201,168,76,0.35)',
+        transform: hovered ? 'scale(1.18)' : 'scale(1)',
+        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
       }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
       DB
     </div>
   )
 }
 
-function AgentBubble({ content }) {
+function AgentBubble({ content, showCursor = false }) {
+  const [hovered, setHovered] = useState(false)
   return (
-    <div className="flex items-end gap-3">
+    <div className="flex items-end gap-2 sm:gap-3">
       <AgentAvatar />
       <div
         className="max-w-[88%] sm:max-w-[78%] rounded-2xl rounded-bl-sm px-4 sm:px-5 py-3 sm:py-4"
         style={{
           background: '#16213e',
-          border: '1px solid rgba(201,168,76,0.2)',
-          boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
+          border: `1px solid ${hovered ? 'rgba(201,168,76,0.45)' : 'rgba(201,168,76,0.2)'}`,
+          boxShadow: hovered
+            ? '0 6px 22px rgba(0,0,0,0.45), 0 0 14px rgba(201,168,76,0.1)'
+            : '0 2px 12px rgba(0,0,0,0.3)',
           color: '#e8e8f0',
+          transform: hovered ? 'scale(1.01)' : 'scale(1)',
+          transformOrigin: 'left center',
+          transition: 'transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease',
         }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
       >
         <MessageText text={content} />
+        {showCursor && (
+          <span
+            className="inline-block w-0.5 h-4 ml-0.5 align-text-bottom animate-blink"
+            style={{ background: '#c9a84c' }}
+          />
+        )}
       </div>
     </div>
   )
@@ -179,6 +200,8 @@ export default function Chat() {
   const [streamingText, setStreamingText] = useState('')
   const [error, setError] = useState('')
   const [sendHovered, setSendHovered] = useState(false)
+  const [inputHovered, setInputHovered] = useState(false)
+  const [inputFocused, setInputFocused] = useState(false)
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -372,24 +395,7 @@ export default function Chat() {
         {/* Streaming bubble */}
         {loading && streamingText && (
           <div className="mb-5 animate-fadeIn max-w-2xl mx-auto">
-            <div className="flex items-end gap-3">
-              <AgentAvatar />
-              <div
-                className="max-w-[88%] sm:max-w-[78%] rounded-2xl rounded-bl-sm px-4 sm:px-5 py-3 sm:py-4"
-                style={{
-                  background: '#16213e',
-                  border: '1px solid rgba(201,168,76,0.2)',
-                  boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
-                  color: '#e8e8f0',
-                }}
-              >
-                <MessageText text={streamingText} />
-                <span
-                  className="inline-block w-0.5 h-4 ml-0.5 align-text-bottom animate-blink"
-                  style={{ background: '#c9a84c' }}
-                />
-              </div>
-            </div>
+            <AgentBubble content={streamingText} showCursor={true} />
           </div>
         )}
 
@@ -427,16 +433,36 @@ export default function Chat() {
             placeholder="Ihre Antwort …"
             rows={1}
             disabled={loading}
-            className="flex-1 resize-none outline-none transition-all duration-200 rounded-xl px-4 py-3 sm:py-3 text-base sm:text-sm font-lato"
+            className="flex-1 resize-none outline-none rounded-xl px-4 py-3 text-base sm:text-sm font-lato"
             style={{
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(201,168,76,0.25)',
+              background: inputFocused
+                ? 'rgba(255,255,255,0.07)'
+                : inputHovered
+                ? 'rgba(255,255,255,0.06)'
+                : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${
+                inputFocused
+                  ? 'rgba(201,168,76,0.75)'
+                  : inputHovered
+                  ? 'rgba(201,168,76,0.5)'
+                  : 'rgba(201,168,76,0.25)'
+              }`,
+              boxShadow: inputFocused
+                ? '0 0 0 2px rgba(201,168,76,0.12)'
+                : inputHovered
+                ? '0 0 0 1px rgba(201,168,76,0.08)'
+                : 'none',
               color: '#f0f0f0',
               maxHeight: '120px',
               caretColor: '#c9a84c',
+              transform: inputHovered && !inputFocused ? 'scale(1.01)' : 'scale(1)',
+              transformOrigin: 'left center',
+              transition: 'transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease',
             }}
-            onFocus={(e) => { e.target.style.borderColor = 'rgba(201,168,76,0.7)' }}
-            onBlur={(e) => { e.target.style.borderColor = 'rgba(201,168,76,0.25)' }}
+            onMouseEnter={() => setInputHovered(true)}
+            onMouseLeave={() => setInputHovered(false)}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
             onInput={(e) => {
               e.target.style.height = 'auto'
               e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
