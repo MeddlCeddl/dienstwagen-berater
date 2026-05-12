@@ -42,23 +42,34 @@ EMPFEHLUNGEN_JSON_START
 }
 EMPFEHLUNGEN_JSON_END
 
+Zeige am Ende nach dem JSON-Block für jedes empfohlene Fahrzeug einen Konfigurator-Tag in dieser Form: [KONFIGURATOR:BMW], [KONFIGURATOR:MERCEDES], [KONFIGURATOR:AUDI] oder [KONFIGURATOR:VW] – das Frontend ersetzt diese Tags automatisch durch klickbare Konfigurator-Buttons.
+
 Verwende immer echte aktuelle Preise. Stelle deine Fragen einzeln oder maximal zu zweit, damit das Gespräch natürlich wirkt. Sei professionell, freundlich und präzise. Kommuniziere ausschließlich auf Deutsch.`
 
-const INITIAL_GREETING_DISPLAY = `Willkommen beim **Dienstwagen-Berater**! 🚗
+const INITIAL_GREETING_DISPLAY = `Willkommen beim **Dienstwagen-Berater**
 
 Ich helfe Ihnen dabei, das optimale Fahrzeug aus unserem Portfolio zu finden – von BMW, Mercedes-Benz, Audi und VW.
 
-Um Ihnen die beste Empfehlung geben zu können, stelle ich Ihnen zunächst einige gezielte Fragen zu Ihren Anforderungen.
+Um Ihnen die beste Empfehlung geben zu können, stelle ich Ihnen einige gezielte Fragen zu Ihren Anforderungen.
 
 **Wie viele Kilometer fahren Sie ungefähr pro Jahr?**`
 
-const INITIAL_GREETING_API = `Willkommen beim Dienstwagen-Berater! 🚗
+const INITIAL_GREETING_API = `Willkommen beim Dienstwagen-Berater!
 
 Ich helfe Ihnen dabei, das optimale Fahrzeug aus unserem Portfolio zu finden – von BMW, Mercedes-Benz, Audi und VW.
 
-Um Ihnen die beste Empfehlung geben zu können, stelle ich Ihnen zunächst einige gezielte Fragen zu Ihren Anforderungen.
+Um Ihnen die beste Empfehlung geben zu können, stelle ich Ihnen einige gezielte Fragen zu Ihren Anforderungen.
 
 Wie viele Kilometer fahren Sie ungefähr pro Jahr?`
+
+const INITIAL_MESSAGES = [
+  {
+    id: 'initial',
+    role: 'assistant',
+    content: INITIAL_GREETING_DISPLAY,
+    recommendations: null,
+  },
+]
 
 function parseRecommendations(text) {
   const m = text.match(/EMPFEHLUNGEN_JSON_START\s*([\s\S]*?)\s*EMPFEHLUNGEN_JSON_END/)
@@ -81,6 +92,7 @@ function cleanText(text) {
   return text
     .replace(/EMPFEHLUNGEN_JSON_START[\s\S]*?EMPFEHLUNGEN_JSON_END/g, '')
     .replace(/```json[\s\S]*?```/g, '')
+    .replace(/\[KONFIGURATOR:[A-Z-]+\]/g, '')
     .trim()
 }
 
@@ -90,7 +102,9 @@ function ParsedLine({ text }) {
     <>
       {parts.map((part, i) =>
         part.startsWith('**') && part.endsWith('**') ? (
-          <strong key={i}>{part.slice(2, -2)}</strong>
+          <strong key={i} className="text-gold-light font-semibold">
+            {part.slice(2, -2)}
+          </strong>
         ) : (
           <span key={i}>{part}</span>
         )
@@ -114,15 +128,22 @@ function MessageText({ text }) {
 
 function TypingIndicator() {
   return (
-    <div className="flex items-end gap-2 mb-4">
+    <div className="flex items-end gap-3 mb-5 animate-fadeIn">
       <AgentAvatar />
-      <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
-        <div className="flex gap-1 items-center h-4">
+      <div
+        className="rounded-2xl rounded-bl-sm px-5 py-4"
+        style={{ background: '#16213e', border: '1px solid rgba(201,168,76,0.2)' }}
+      >
+        <div className="flex gap-1.5 items-center h-4">
           {[0, 1, 2].map((i) => (
             <span
               key={i}
-              className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-              style={{ animationDelay: `${i * 0.15}s` }}
+              className="w-2 h-2 rounded-full animate-bounce"
+              style={{
+                background: '#c9a84c',
+                animationDelay: `${i * 0.18}s`,
+                animationDuration: '0.9s',
+              }}
             />
           ))}
         </div>
@@ -133,21 +154,21 @@ function TypingIndicator() {
 
 function AgentAvatar() {
   return (
-    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-sm shrink-0 mb-1">
-      🤖
+    <div
+      className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mb-1 font-lato tracking-wider"
+      style={{
+        background: 'linear-gradient(135deg, #c9a84c, #8a6f30)',
+        color: '#1a1a2e',
+        boxShadow: '0 2px 8px rgba(201,168,76,0.35)',
+      }}
+    >
+      DB
     </div>
   )
 }
 
-export default function Chat({ onReset }) {
-  const [messages, setMessages] = useState([
-    {
-      id: 'initial',
-      role: 'assistant',
-      content: INITIAL_GREETING_DISPLAY,
-      recommendations: null,
-    },
-  ])
+export default function Chat() {
+  const [messages, setMessages] = useState(INITIAL_MESSAGES)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [streamingText, setStreamingText] = useState('')
@@ -158,6 +179,15 @@ export default function Chat({ onReset }) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, streamingText, loading])
+
+  function resetChat() {
+    setMessages(INITIAL_MESSAGES)
+    setInput('')
+    setError('')
+    setStreamingText('')
+    setLoading(false)
+    setTimeout(() => inputRef.current?.focus(), 50)
+  }
 
   async function sendMessage() {
     const userText = input.trim()
@@ -183,13 +213,8 @@ export default function Chat({ onReset }) {
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          system: SYSTEM_PROMPT,
-          messages: apiMessages,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ system: SYSTEM_PROMPT, messages: apiMessages }),
       })
 
       if (!response.ok) {
@@ -214,10 +239,7 @@ export default function Chat({ onReset }) {
           if (data === '[DONE]') continue
           try {
             const parsed = JSON.parse(data)
-            if (
-              parsed.type === 'content_block_delta' &&
-              parsed.delta?.type === 'text_delta'
-            ) {
+            if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
               fullText += parsed.delta.text
               setStreamingText(cleanText(fullText))
             }
@@ -226,13 +248,15 @@ export default function Chat({ onReset }) {
       }
 
       const recs = parseRecommendations(fullText)
-      const assistantMsg = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: cleanText(fullText),
-        recommendations: recs,
-      }
-      setMessages((prev) => [...prev, assistantMsg])
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: cleanText(fullText),
+          recommendations: recs,
+        },
+      ])
     } catch (err) {
       setError(`Fehler: ${err.message}`)
     } finally {
@@ -250,90 +274,172 @@ export default function Chat({ onReset }) {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col h-screen font-lato" style={{ background: '#1a1a2e' }}>
+
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm shrink-0">
+      <header
+        className="shrink-0 px-6 py-3 flex items-center justify-between"
+        style={{
+          background: '#16213e',
+          borderBottom: '1px solid rgba(201,168,76,0.25)',
+          boxShadow: '0 2px 20px rgba(0,0,0,0.4)',
+        }}
+      >
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-lg">
-            🚗
-          </div>
+          <div
+            className="w-1 h-8 rounded-full"
+            style={{ background: 'linear-gradient(to bottom, #c9a84c, #8a6f30)' }}
+          />
           <div>
-            <div className="font-bold text-gray-900 text-sm leading-tight">Dienstwagen-Berater</div>
-            <div className="text-xs text-gray-500">BMW · Mercedes-Benz · Audi · VW</div>
+            <span className="font-playfair font-semibold text-base tracking-wide" style={{ color: '#f0f0f0' }}>
+              Dienstwagen-Berater
+            </span>
+            <div className="text-xs tracking-widest mt-0.5 font-light" style={{ color: '#c9a84c', letterSpacing: '0.15em' }}>
+              BMW · MERCEDES-BENZ · AUDI · VW
+            </div>
           </div>
         </div>
         <button
-          onClick={onReset}
-          className="text-xs text-gray-500 hover:text-gray-700 border border-gray-300 hover:border-gray-400 px-3 py-1.5 rounded-lg transition-colors"
+          onClick={resetChat}
+          className="text-xs font-light px-4 py-1.5 rounded transition-all duration-200"
+          style={{
+            color: '#c9a84c',
+            border: '1px solid rgba(201,168,76,0.4)',
+            letterSpacing: '0.05em',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(201,168,76,0.1)'
+            e.currentTarget.style.borderColor = 'rgba(201,168,76,0.8)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent'
+            e.currentTarget.style.borderColor = 'rgba(201,168,76,0.4)'
+          }}
         >
           Neu starten
         </button>
       </header>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 max-w-2xl w-full mx-auto">
-        {messages.map((msg) => (
-          <div key={msg.id}>
-            {msg.role === 'assistant' ? (
-              <div className="flex items-end gap-2 mb-4">
-                <AgentAvatar />
-                <div className="max-w-[85%]">
-                  <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
-                    <MessageText text={msg.content} />
-                  </div>
-                  {msg.recommendations && (
-                    <div className="mt-4">
-                      {msg.recommendations.map((car, i) => (
-                        <CarCard key={i} car={car} rank={i} />
-                      ))}
+      <div className="flex-1 overflow-y-auto py-6 px-4">
+        <div className="max-w-2xl mx-auto">
+          {messages.map((msg, idx) => (
+            <div key={msg.id} className="animate-fadeInUp" style={{ animationDelay: idx === 0 ? '0.1s' : '0s', opacity: 0 }}>
+              {msg.role === 'assistant' ? (
+                <div className="flex items-end gap-3 mb-5">
+                  <AgentAvatar />
+                  <div className="max-w-[85%] md:max-w-[78%]">
+                    <div
+                      className="rounded-2xl rounded-bl-sm px-5 py-4"
+                      style={{
+                        background: '#16213e',
+                        border: '1px solid rgba(201,168,76,0.2)',
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
+                        color: '#e8e8f0',
+                      }}
+                    >
+                      <MessageText text={msg.content} />
                     </div>
-                  )}
+                    {msg.recommendations && (
+                      <div className="mt-4 space-y-3">
+                        {msg.recommendations.map((car, i) => (
+                          <CarCard key={i} car={car} rank={i} />
+                        ))}
+                        <p
+                          className="text-xs text-center pt-1 pb-2 font-light"
+                          style={{ color: 'rgba(201,168,76,0.6)', letterSpacing: '0.04em' }}
+                        >
+                          Wählen Sie im Konfigurator Ihr gewünschtes Modell und Ihre Wunschfarbe
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="flex justify-end mb-4">
-                <div className="max-w-[75%] bg-blue-600 text-white rounded-2xl rounded-br-sm px-4 py-3 shadow-sm">
-                  <p className="text-sm leading-relaxed">{msg.content}</p>
+              ) : (
+                <div className="flex justify-end mb-5">
+                  <div
+                    className="max-w-[75%] md:max-w-[65%] rounded-2xl rounded-br-sm px-5 py-4"
+                    style={{
+                      background: 'linear-gradient(135deg, #c9a84c, #a8843a)',
+                      color: '#1a1a2e',
+                      boxShadow: '0 2px 12px rgba(201,168,76,0.25)',
+                    }}
+                  >
+                    <p className="text-sm leading-relaxed font-medium">{msg.content}</p>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        ))}
-
-        {/* Streaming message */}
-        {loading && !streamingText && <TypingIndicator />}
-        {loading && streamingText && (
-          <div className="flex items-end gap-2 mb-4">
-            <AgentAvatar />
-            <div className="max-w-[85%] bg-white border border-gray-200 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
-              <MessageText text={streamingText} />
-              <span className="inline-block w-1.5 h-4 bg-blue-500 animate-pulse ml-0.5 align-text-bottom" />
+              )}
             </div>
-          </div>
-        )}
+          ))}
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">
-            {error}
-          </div>
-        )}
+          {loading && !streamingText && <TypingIndicator />}
 
-        <div ref={bottomRef} />
+          {loading && streamingText && (
+            <div className="flex items-end gap-3 mb-5 animate-fadeIn">
+              <AgentAvatar />
+              <div
+                className="max-w-[85%] md:max-w-[78%] rounded-2xl rounded-bl-sm px-5 py-4"
+                style={{
+                  background: '#16213e',
+                  border: '1px solid rgba(201,168,76,0.2)',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
+                  color: '#e8e8f0',
+                }}
+              >
+                <MessageText text={streamingText} />
+                <span
+                  className="inline-block w-0.5 h-4 ml-0.5 align-text-bottom animate-blink"
+                  style={{ background: '#c9a84c' }}
+                />
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div
+              className="text-sm rounded-xl px-5 py-3 mb-5 animate-fadeIn"
+              style={{
+                background: 'rgba(180,40,40,0.15)',
+                border: '1px solid rgba(180,40,40,0.4)',
+                color: '#ff8080',
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          <div ref={bottomRef} />
+        </div>
       </div>
 
       {/* Input bar */}
-      <div className="bg-white border-t border-gray-200 px-4 py-3 shrink-0">
-        <div className="max-w-2xl mx-auto flex gap-2">
+      <div
+        className="shrink-0 px-4 py-4"
+        style={{
+          background: '#16213e',
+          borderTop: '1px solid rgba(201,168,76,0.2)',
+          boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
+        }}
+      >
+        <div className="max-w-2xl mx-auto flex gap-3">
           <textarea
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ihre Antwort..."
+            placeholder="Ihre Antwort …"
             rows={1}
             disabled={loading}
-            className="flex-1 resize-none border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:bg-gray-50"
-            style={{ maxHeight: '120px' }}
+            className="flex-1 resize-none text-sm outline-none transition-all duration-200 rounded-xl px-4 py-3 font-lato"
+            style={{
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(201,168,76,0.25)',
+              color: '#f0f0f0',
+              maxHeight: '120px',
+              caretColor: '#c9a84c',
+            }}
+            onFocus={(e) => { e.target.style.borderColor = 'rgba(201,168,76,0.7)' }}
+            onBlur={(e) => { e.target.style.borderColor = 'rgba(201,168,76,0.25)' }}
             onInput={(e) => {
               e.target.style.height = 'auto'
               e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
@@ -342,12 +448,25 @@ export default function Chat({ onReset }) {
           <button
             onClick={sendMessage}
             disabled={loading || !input.trim()}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl transition-colors font-medium text-sm shrink-0"
+            className="shrink-0 px-5 py-3 rounded-xl text-sm font-semibold transition-all duration-200 tracking-wide"
+            style={{
+              background: loading || !input.trim()
+                ? 'rgba(201,168,76,0.2)'
+                : 'linear-gradient(135deg, #c9a84c, #a8843a)',
+              color: loading || !input.trim() ? 'rgba(201,168,76,0.4)' : '#1a1a2e',
+              cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
+              boxShadow: loading || !input.trim() ? 'none' : '0 2px 10px rgba(201,168,76,0.3)',
+            }}
           >
             Senden
           </button>
         </div>
-        <p className="text-center text-xs text-gray-400 mt-2">Enter zum Senden · Shift+Enter für neue Zeile</p>
+        <p
+          className="text-center text-xs mt-2.5 font-light"
+          style={{ color: 'rgba(201,168,76,0.35)', letterSpacing: '0.05em' }}
+        >
+          Enter zum Senden · Shift+Enter für neue Zeile
+        </p>
       </div>
     </div>
   )
