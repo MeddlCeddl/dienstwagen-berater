@@ -63,20 +63,13 @@ Um Ihnen die beste Empfehlung geben zu können, stelle ich Ihnen einige gezielte
 Wie viele Kilometer fahren Sie ungefähr pro Jahr?`
 
 const INITIAL_MESSAGES = [
-  {
-    id: 'initial',
-    role: 'assistant',
-    content: INITIAL_GREETING_DISPLAY,
-    recommendations: null,
-  },
+  { id: 'initial', role: 'assistant', content: INITIAL_GREETING_DISPLAY, recommendations: null },
 ]
 
 function parseRecommendations(text) {
   const m = text.match(/EMPFEHLUNGEN_JSON_START\s*([\s\S]*?)\s*EMPFEHLUNGEN_JSON_END/)
   if (m) {
-    try {
-      return JSON.parse(m[1].trim()).recommendations
-    } catch {}
+    try { return JSON.parse(m[1].trim()).recommendations } catch {}
   }
   const cm = text.match(/```json\s*([\s\S]*?)\s*```/)
   if (cm) {
@@ -102,9 +95,7 @@ function ParsedLine({ text }) {
     <>
       {parts.map((part, i) =>
         part.startsWith('**') && part.endsWith('**') ? (
-          <strong key={i} className="text-gold-light font-semibold">
-            {part.slice(2, -2)}
-          </strong>
+          <strong key={i} className="text-gold-light font-semibold">{part.slice(2, -2)}</strong>
         ) : (
           <span key={i}>{part}</span>
         )
@@ -114,10 +105,9 @@ function ParsedLine({ text }) {
 }
 
 function MessageText({ text }) {
-  const lines = text.split('\n')
   return (
     <div className="text-sm leading-relaxed space-y-1">
-      {lines.map((line, i) => (
+      {text.split('\n').map((line, i) => (
         <p key={i} className={line === '' ? 'h-2' : ''}>
           {line !== '' && <ParsedLine text={line} />}
         </p>
@@ -128,22 +118,18 @@ function MessageText({ text }) {
 
 function TypingIndicator() {
   return (
-    <div className="flex items-end gap-3 mb-5 animate-fadeIn">
+    <div className="flex items-end gap-3 mb-5 animate-fadeIn max-w-2xl mx-auto">
       <AgentAvatar />
       <div
         className="rounded-2xl rounded-bl-sm px-5 py-4"
         style={{ background: '#16213e', border: '1px solid rgba(201,168,76,0.2)' }}
       >
-        <div className="flex gap-1.5 items-center h-4">
+        <div className="flex gap-2 items-center h-5">
           {[0, 1, 2].map((i) => (
             <span
               key={i}
-              className="w-2 h-2 rounded-full animate-bounce"
-              style={{
-                background: '#c9a84c',
-                animationDelay: `${i * 0.18}s`,
-                animationDuration: '0.9s',
-              }}
+              className="w-2.5 h-2.5 rounded-full animate-dotPulse"
+              style={{ background: '#c9a84c', animationDelay: `${i * 0.22}s` }}
             />
           ))}
         </div>
@@ -167,12 +153,32 @@ function AgentAvatar() {
   )
 }
 
+function AgentBubble({ content }) {
+  return (
+    <div className="flex items-end gap-3">
+      <AgentAvatar />
+      <div
+        className="max-w-[88%] sm:max-w-[78%] rounded-2xl rounded-bl-sm px-4 sm:px-5 py-3 sm:py-4"
+        style={{
+          background: '#16213e',
+          border: '1px solid rgba(201,168,76,0.2)',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
+          color: '#e8e8f0',
+        }}
+      >
+        <MessageText text={content} />
+      </div>
+    </div>
+  )
+}
+
 export default function Chat() {
   const [messages, setMessages] = useState(INITIAL_MESSAGES)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [streamingText, setStreamingText] = useState('')
   const [error, setError] = useState('')
+  const [sendHovered, setSendHovered] = useState(false)
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -250,12 +256,7 @@ export default function Chat() {
       const recs = parseRecommendations(fullText)
       setMessages((prev) => [
         ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: cleanText(fullText),
-          recommendations: recs,
-        },
+        { id: (Date.now() + 1).toString(), role: 'assistant', content: cleanText(fullText), recommendations: recs },
       ])
     } catch (err) {
       setError(`Fehler: ${err.message}`)
@@ -273,12 +274,14 @@ export default function Chat() {
     }
   }
 
+  const sendDisabled = loading || !input.trim()
+
   return (
     <div className="flex flex-col h-screen font-lato" style={{ background: '#1a1a2e' }}>
 
       {/* Header */}
       <header
-        className="shrink-0 px-6 py-3 flex items-center justify-between"
+        className="shrink-0 px-4 sm:px-6 py-3 flex items-center justify-between"
         style={{
           background: '#16213e',
           borderBottom: '1px solid rgba(201,168,76,0.25)',
@@ -286,29 +289,22 @@ export default function Chat() {
         }}
       >
         <div className="flex items-center gap-3">
-          <div
-            className="w-1 h-8 rounded-full"
-            style={{ background: 'linear-gradient(to bottom, #c9a84c, #8a6f30)' }}
-          />
+          <div className="w-1 h-8 rounded-full" style={{ background: 'linear-gradient(to bottom, #c9a84c, #8a6f30)' }} />
           <div>
-            <span className="font-playfair font-semibold text-base tracking-wide" style={{ color: '#f0f0f0' }}>
+            <span className="font-playfair font-semibold text-sm sm:text-base tracking-wide" style={{ color: '#f0f0f0' }}>
               Dienstwagen-Berater
             </span>
-            <div className="text-xs tracking-widest mt-0.5 font-light" style={{ color: '#c9a84c', letterSpacing: '0.15em' }}>
+            <div className="text-xs mt-0.5 font-light hidden sm:block" style={{ color: '#c9a84c', letterSpacing: '0.15em' }}>
               BMW · MERCEDES-BENZ · AUDI · VW
             </div>
           </div>
         </div>
         <button
           onClick={resetChat}
-          className="text-xs font-light px-4 py-1.5 rounded transition-all duration-200"
-          style={{
-            color: '#c9a84c',
-            border: '1px solid rgba(201,168,76,0.4)',
-            letterSpacing: '0.05em',
-          }}
+          className="text-xs font-light px-3 sm:px-4 py-1.5 rounded transition-all duration-200 hover:scale-105"
+          style={{ color: '#c9a84c', border: '1px solid rgba(201,168,76,0.4)', letterSpacing: '0.05em' }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(201,168,76,0.1)'
+            e.currentTarget.style.background = 'rgba(201,168,76,0.12)'
             e.currentTarget.style.borderColor = 'rgba(201,168,76,0.8)'
           }}
           onMouseLeave={(e) => {
@@ -321,64 +317,65 @@ export default function Chat() {
       </header>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto py-6 px-4">
-        <div className="max-w-2xl mx-auto">
-          {messages.map((msg, idx) => (
-            <div key={msg.id} className="animate-fadeInUp" style={{ animationDelay: idx === 0 ? '0.1s' : '0s', opacity: 0 }}>
-              {msg.role === 'assistant' ? (
-                <div className="flex items-end gap-3 mb-5">
-                  <AgentAvatar />
-                  <div className="max-w-[85%] md:max-w-[78%]">
-                    <div
-                      className="rounded-2xl rounded-bl-sm px-5 py-4"
-                      style={{
-                        background: '#16213e',
-                        border: '1px solid rgba(201,168,76,0.2)',
-                        boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
-                        color: '#e8e8f0',
-                      }}
-                    >
-                      <MessageText text={msg.content} />
+      <div className="flex-1 overflow-y-auto py-5 sm:py-6 px-3 sm:px-4">
+        {messages.map((msg, idx) => (
+          <div
+            key={msg.id}
+            className="mb-5 animate-fadeInUp"
+            style={{ animationDelay: `${idx * 0.06}s`, opacity: 0 }}
+          >
+            {msg.role === 'assistant' ? (
+              <>
+                {/* Text bubble – narrow container */}
+                <div className="max-w-2xl mx-auto">
+                  <AgentBubble content={msg.content} />
+                </div>
+
+                {/* Cards grid – wide container for multi-column layout */}
+                {msg.recommendations && (
+                  <div className="max-w-4xl mx-auto mt-4 px-0 sm:px-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                      {msg.recommendations.map((car, i) => (
+                        <CarCard key={i} car={car} rank={i} />
+                      ))}
                     </div>
-                    {msg.recommendations && (
-                      <div className="mt-4 space-y-3">
-                        {msg.recommendations.map((car, i) => (
-                          <CarCard key={i} car={car} rank={i} />
-                        ))}
-                        <p
-                          className="text-xs text-center pt-1 pb-2 font-light"
-                          style={{ color: 'rgba(201,168,76,0.6)', letterSpacing: '0.04em' }}
-                        >
-                          Wählen Sie im Konfigurator Ihr gewünschtes Modell und Ihre Wunschfarbe
-                        </p>
-                      </div>
-                    )}
+                    <p
+                      className="text-xs text-center mt-3 font-light"
+                      style={{ color: 'rgba(201,168,76,0.5)', letterSpacing: '0.05em' }}
+                    >
+                      Wählen Sie im Konfigurator Ihr gewünschtes Modell und Ihre Wunschfarbe
+                    </p>
                   </div>
+                )}
+              </>
+            ) : (
+              /* User bubble */
+              <div className="max-w-2xl mx-auto flex justify-end">
+                <div
+                  className="max-w-[88%] sm:max-w-[72%] rounded-2xl rounded-br-sm px-4 sm:px-5 py-3 sm:py-4"
+                  style={{
+                    background: 'linear-gradient(135deg, #c9a84c, #a8843a)',
+                    color: '#1a1a2e',
+                    boxShadow: '0 2px 14px rgba(201,168,76,0.28)',
+                  }}
+                >
+                  <p className="text-sm leading-relaxed font-medium">{msg.content}</p>
                 </div>
-              ) : (
-                <div className="flex justify-end mb-5">
-                  <div
-                    className="max-w-[75%] md:max-w-[65%] rounded-2xl rounded-br-sm px-5 py-4"
-                    style={{
-                      background: 'linear-gradient(135deg, #c9a84c, #a8843a)',
-                      color: '#1a1a2e',
-                      boxShadow: '0 2px 12px rgba(201,168,76,0.25)',
-                    }}
-                  >
-                    <p className="text-sm leading-relaxed font-medium">{msg.content}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+              </div>
+            )}
+          </div>
+        ))}
 
-          {loading && !streamingText && <TypingIndicator />}
+        {/* Typing indicator */}
+        {loading && !streamingText && <TypingIndicator />}
 
-          {loading && streamingText && (
-            <div className="flex items-end gap-3 mb-5 animate-fadeIn">
+        {/* Streaming bubble */}
+        {loading && streamingText && (
+          <div className="mb-5 animate-fadeIn max-w-2xl mx-auto">
+            <div className="flex items-end gap-3">
               <AgentAvatar />
               <div
-                className="max-w-[85%] md:max-w-[78%] rounded-2xl rounded-bl-sm px-5 py-4"
+                className="max-w-[88%] sm:max-w-[78%] rounded-2xl rounded-bl-sm px-4 sm:px-5 py-3 sm:py-4"
                 style={{
                   background: '#16213e',
                   border: '1px solid rgba(201,168,76,0.2)',
@@ -393,35 +390,35 @@ export default function Chat() {
                 />
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {error && (
-            <div
-              className="text-sm rounded-xl px-5 py-3 mb-5 animate-fadeIn"
-              style={{
-                background: 'rgba(180,40,40,0.15)',
-                border: '1px solid rgba(180,40,40,0.4)',
-                color: '#ff8080',
-              }}
-            >
-              {error}
-            </div>
-          )}
+        {error && (
+          <div
+            className="text-sm rounded-xl px-5 py-3 mb-5 animate-fadeIn max-w-2xl mx-auto"
+            style={{
+              background: 'rgba(180,40,40,0.15)',
+              border: '1px solid rgba(180,40,40,0.4)',
+              color: '#ff8080',
+            }}
+          >
+            {error}
+          </div>
+        )}
 
-          <div ref={bottomRef} />
-        </div>
+        <div ref={bottomRef} />
       </div>
 
       {/* Input bar */}
       <div
-        className="shrink-0 px-4 py-4"
+        className="shrink-0 px-3 sm:px-4 py-3 sm:py-4"
         style={{
           background: '#16213e',
           borderTop: '1px solid rgba(201,168,76,0.2)',
           boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
         }}
       >
-        <div className="max-w-2xl mx-auto flex gap-3">
+        <div className="max-w-2xl mx-auto flex gap-2 sm:gap-3">
           <textarea
             ref={inputRef}
             value={input}
@@ -430,7 +427,7 @@ export default function Chat() {
             placeholder="Ihre Antwort …"
             rows={1}
             disabled={loading}
-            className="flex-1 resize-none text-sm outline-none transition-all duration-200 rounded-xl px-4 py-3 font-lato"
+            className="flex-1 resize-none outline-none transition-all duration-200 rounded-xl px-4 py-3 sm:py-3 text-base sm:text-sm font-lato"
             style={{
               background: 'rgba(255,255,255,0.05)',
               border: '1px solid rgba(201,168,76,0.25)',
@@ -447,23 +444,30 @@ export default function Chat() {
           />
           <button
             onClick={sendMessage}
-            disabled={loading || !input.trim()}
-            className="shrink-0 px-5 py-3 rounded-xl text-sm font-semibold transition-all duration-200 tracking-wide"
+            disabled={sendDisabled}
+            onMouseEnter={() => setSendHovered(true)}
+            onMouseLeave={() => setSendHovered(false)}
+            className="shrink-0 px-4 sm:px-5 py-3 rounded-xl text-sm font-semibold tracking-wide transition-all duration-200"
             style={{
-              background: loading || !input.trim()
-                ? 'rgba(201,168,76,0.2)'
+              background: sendDisabled
+                ? 'rgba(201,168,76,0.18)'
                 : 'linear-gradient(135deg, #c9a84c, #a8843a)',
-              color: loading || !input.trim() ? 'rgba(201,168,76,0.4)' : '#1a1a2e',
-              cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
-              boxShadow: loading || !input.trim() ? 'none' : '0 2px 10px rgba(201,168,76,0.3)',
+              color: sendDisabled ? 'rgba(201,168,76,0.35)' : '#1a1a2e',
+              cursor: sendDisabled ? 'not-allowed' : 'pointer',
+              boxShadow: !sendDisabled && sendHovered
+                ? '0 4px 16px rgba(201,168,76,0.45)'
+                : !sendDisabled
+                ? '0 2px 10px rgba(201,168,76,0.3)'
+                : 'none',
+              transform: !sendDisabled && sendHovered ? 'scale(1.05)' : 'scale(1)',
             }}
           >
             Senden
           </button>
         </div>
         <p
-          className="text-center text-xs mt-2.5 font-light"
-          style={{ color: 'rgba(201,168,76,0.35)', letterSpacing: '0.05em' }}
+          className="text-center text-xs mt-2 font-light hidden sm:block"
+          style={{ color: 'rgba(201,168,76,0.3)', letterSpacing: '0.05em' }}
         >
           Enter zum Senden · Shift+Enter für neue Zeile
         </p>

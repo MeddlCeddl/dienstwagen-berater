@@ -28,11 +28,16 @@ export default {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0' },
         },
+        dotPulse: {
+          '0%, 100%': { transform: 'scale(0.6)', opacity: '0.3' },
+          '50%': { transform: 'scale(1.2)', opacity: '1' },
+        },
       },
       animation: {
         fadeInUp: 'fadeInUp 0.45s ease forwards',
         fadeIn: 'fadeIn 0.35s ease forwards',
         blink: 'blink 1s step-end infinite',
+        dotPulse: 'dotPulse 1.3s ease-in-out infinite',
       },
     },
   },
