@@ -334,7 +334,7 @@ export default function Chat() {
                 {/* Cards grid – wide container for multi-column layout */}
                 {msg.recommendations && (
                   <div className="max-w-4xl mx-auto mt-4 px-0 sm:px-2">
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {msg.recommendations.map((car, i) => (
                         <CarCard key={i} car={car} rank={i} />
                       ))}

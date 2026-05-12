@@ -54,8 +54,14 @@ export default function CarCard({ car, rank }) {
   const brandAbbr = car.marke === 'Mercedes-Benz' ? 'MB' : car.marke.slice(0, 3).toUpperCase()
 
   return (
+    /* Outer div: entry animation only — no transform/opacity conflict with hover */
     <div
-      className="rounded-2xl overflow-hidden animate-fadeInUp"
+      className="animate-fadeInUp"
+      style={{ animationDelay: `${0.08 + rank * 0.13}s`, opacity: 0 }}
+    >
+    {/* Inner div: hover effects only — owns transform independently of animation */}
+    <div
+      className="rounded-2xl overflow-hidden"
       style={{
         background: 'linear-gradient(160deg, #16213e 0%, #0f1a30 100%)',
         border: `1px solid ${cardHovered ? cfg.accent : cfg.accentBorder}`,
@@ -64,8 +70,6 @@ export default function CarCard({ car, rank }) {
           : `0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 ${cfg.accentBorder}`,
         transform: cardHovered ? 'translateY(-4px)' : 'translateY(0)',
         transition: 'transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease',
-        animationDelay: `${0.08 + rank * 0.13}s`,
-        opacity: 0,
       }}
       onMouseEnter={() => setCardHovered(true)}
       onMouseLeave={() => setCardHovered(false)}
@@ -170,6 +174,7 @@ export default function CarCard({ car, rank }) {
           </a>
         )}
       </div>
+    </div>
     </div>
   )
 }
